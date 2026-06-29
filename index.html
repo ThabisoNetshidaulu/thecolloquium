@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Book Store Online - Your favourite books delivered to your door. Shop bestsellers, new arrivals and more.">
+<title>Book Store Online | Exclusive Books</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- Header (rendered by JS) -->
+<header class="site-header"></header>
+<!-- Hero Section -->
+<section class="hero">
+<div class="container">
+<div class="hero-content">
+<div class="hero-text">
+<h1>Discover Your Next<br>Favourite Book</h1>
+<p>Shop thousands of titles across every genre. Free delivery on orders over R450. Exclusive deals for members.</p>
+<div class="hero-buttons">
+<a href="catalog.html" class="btn btn-primary">Browse Collection</a>
+<a href="catalog.html" class="btn btn-secondary">View Bestsellers &rarr;</a>
+</div>
+</div>
+<div class="hero-image">
+<img src="https://images.unsplash.com/photo-1495446815901-a7297e633e8d?w=600" alt="Stack of beautiful books">
+</div>
+</div>
+</div>
+</section>
+<!-- Categories Section -->
+<section class="categories-section">
+<div class="container">
+<div class="section-header">
+<h2>Browse by Category</h2>
+</div>
+<div class="category-grid" id="categoryGrid"></div>
+</div>
+</section>
+<!-- Bestsellers Section -->
+<section class="section section-alt">
+<div class="container">
+<div class="section-header">
+<h2>Top Bestsellers</h2>
+<a href="catalog.html" class="view-all">View All &rarr;</a>
+</div>
+<div class="book-grid" id="bestsellersGrid"></div>
+</div>
+</section>
+<!-- New Arrivals Section -->
+<section class="section">
+<div class="container">
+<div class="section-header">
+<h2>New Arrivals</h2>
+<a href="catalog.html" class="view-all">View All &rarr;</a>
+</div>
+<div class="book-grid" id="newArrivalsGrid"></div>
+</div>
+</section>
+<!-- All Books Section -->
+<section class="section section-alt">
+<div class="container">
+<div class="section-header">
+<h2>All Books</h2>
+</div>
+<div class="book-grid" id="allBooksGrid"></div>
+</div>
+</section>
+<!-- Newsletter -->
+<section class="newsletter">
+<div class="container">
+<h2>Subscribe to Our Newsletter</h2>
+<p>Get exclusive deals, previews and updates when you subscribe.</p>
+<form class="newsletter-form" onsubmit="event.preventDefault(); subscribeNewsletter();">
+<input type="email" placeholder="Enter your email address" required>
+<button type="submit" class="btn">Subscribe</button>
+</form>
+</div>
+</section>
+<!-- Footer (rendered by JS) -->
+<footer class="site-footer"></footer>
+<!-- Scripts -->
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+// Render homepage content from API
+document.addEventListener('DOMContentLoaded', async () => {
+  // Fetch from API first, fallback to local data
+  let books = BOOKS;
+  let categories = CATEGORIES;
+  
+  try {
+    const apiBooks = await API.getBooks();
+    if (apiBooks && apiBooks.length > 0) {
+      books = apiBooks.map(b => ({
+        id: b.book_id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn,
+        price: b.price,
+        stock: b.stock_quantity,
+        categoryId: b.category_id,
+        description: b.description,
+        publisher: b.publisher,
+        year: b.publication_year,
+        pages: b.page_count,
+        format: b.format,
+        cover: b.cover_image,
+        rating: b.rating_average,
+        reviewCount: b.rating_count,
+        isBestseller: b.is_bestseller === 1,
+        isNewArrival: b.is_new_arrival === 1
+      }));
+    }
+  } catch (err) {
+    console.log('Using local book data');
+  }
+
+  try {
+    const apiCategories = await API.getCategories();
+    if (apiCategories && apiCategories.length > 0) {
+      categories = apiCategories.map(c => ({
+        id: c.category_id,
+        name: c.name,
+        description: c.description,
+        icon: c.name.substring(0, 2).toUpperCase()
+      }));
+    }
+  } catch (err) {
+    console.log('Using local category data');
+  }
+
+  // Categories
+  const catGrid = document.getElementById('categoryGrid');
+  catGrid.innerHTML = categories.map(cat => `
+    <a href="catalog.html?cat=${cat.id}" class="category-card">
+      <div class="category-icon">${cat.icon}</div>
+      <div class="category-name">${cat.name}</div>
+    </a>
+  `).join('');
+
+  // Bestsellers
+  const bestsellers = books.filter(b => b.isBestseller).slice(0, 5);
+  document.getElementById('bestsellersGrid').innerHTML =
+    bestsellers.map(renderBookCard).join('');
+
+  // New Arrivals
+  const newArrivals = books.filter(b => b.isNewArrival).slice(0, 4);
+  document.getElementById('newArrivalsGrid').innerHTML =
+    newArrivals.map(renderBookCard).join('');
+
+  // All Books
+  document.getElementById('allBooksGrid').innerHTML =
+    books.slice(0, 8).map(renderBookCard).join('');
+});
+
+function subscribeNewsletter() {
+  showToast('Thank you for subscribing!', 'success');
+  document.querySelector('.newsletter-form').reset();
+}
+</script>
+</body>
+</html>

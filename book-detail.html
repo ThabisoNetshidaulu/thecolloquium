@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Details | Book Store Online</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* Review Form Styles */
+.review-form {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  margin-bottom: 32px;
+  box-shadow: var(--shadow);
+  border: 2px solid var(--light-gray);
+}
+
+.review-form h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  margin-bottom: 20px;
+  color: var(--primary);
+}
+
+.star-rating-input {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  font-size: 2rem;
+}
+
+.star-rating-input .star {
+  cursor: pointer;
+  color: var(--light-gray);
+  transition: var(--transition);
+  user-select: none;
+}
+
+.star-rating-input .star:hover,
+.star-rating-input .star.active {
+  color: var(--gold);
+}
+
+.star-rating-input .star:hover ~ .star {
+  color: var(--light-gray);
+}
+
+.review-form .form-group {
+  margin-bottom: 20px;
+}
+
+.review-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.review-form .btn {
+  padding: 12px 32px;
+}
+
+.review-card {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--light-gray);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.review-author {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 1rem;
+}
+
+.review-date {
+  font-size: 0.85rem;
+  color: var(--mid-gray);
+  font-weight: 500;
+}
+
+.review-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.review-badge {
+  background: var(--gold);
+  color: var(--primary);
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.review-comment {
+  color: var(--dark-gray);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.no-reviews {
+  text-align: center;
+  padding: 40px;
+  color: var(--mid-gray);
+}
+
+.no-reviews i {
+  font-size: 3rem;
+  margin-bottom: 16px;
+  display: block;
+  color: var(--light-gray);
+}
+
+.review-success {
+  background: linear-gradient(135deg, var(--success) 0%, #047857 100%);
+  color: var(--white);
+  padding: 16px 24px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.review-success.show {
+  display: flex;
+}
+
+.review-divider {
+  border: none;
+  border-top: 2px solid var(--light-gray);
+  margin: 32px 0;
+}
+
+.review-section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+  color: var(--primary);
+  margin-bottom: 24px;
+}
+</style>
+</head>
+<body>
+<header class="site-header"></header>
+<div class="page-title"></div>
+<div class="container">
+<div class="book-detail-grid" id="bookDetail"></div>
+</div>
+<!-- Related Books -->
+<section class="section section-alt">
+<div class="container">
+<div class="section-header">
+<h2>You May Also Like</h2>
+</div>
+<div class="book-grid" id="relatedBooks"></div>
+</div>
+</section>
+<footer class="site-footer"></footer>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+// Store reviews in localStorage as fallback
+const ReviewsStore = {
+  KEY: 'colloquium_reviews',
+  
+  getAll() {
+    try {
+      return JSON.parse(localStorage.getItem(this.KEY)) || [];
+    } catch { return []; }
+  },
+  
+  getByBook(bookId) {
+    return this.getAll().filter(r => r.bookId === parseInt(bookId));
+  },
+  
+  add(review) {
+    const reviews = this.getAll();
+    review.id = Date.now();
+    reviews.push(review);
+    localStorage.setItem(this.KEY, JSON.stringify(reviews));
+    return review;
+  },
+  
+  // Merge API reviews with local reviews
+  merge(bookId, apiReviews) {
+    const local = this.getByBook(bookId);
+    // Create a map of existing reviews by some identifier to avoid duplicates
+    const existing = new Set(apiReviews.map(r => r.id));
+    const merged = [...apiReviews];
+    local.forEach(r => {
+      if (!existing.has(r.id)) merged.push(r);
+    });
+    return merged.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+};
+
+let currentBookId = null;
+let currentReviews = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const params = new URLSearchParams(window.location.search);
+  const bookId = parseInt(params.get('id'));
+  currentBookId = bookId;
+  
+  let book = getBookById(bookId);
+  
+  // Try to fetch from API
+  try {
+    const apiBook = await API.getBook(bookId);
+    if (apiBook && apiBook.book_id) {
+      book = {
+        id: apiBook.book_id,
+        title: apiBook.title,
+        author: apiBook.author,
+        isbn: apiBook.isbn,
+        price: apiBook.price,
+        stock: apiBook.stock_quantity,
+        categoryId: apiBook.category_id,
+        description: apiBook.description,
+        publisher: apiBook.publisher,
+        year: apiBook.publication_year,
+        pages: apiBook.page_count,
+        format: apiBook.format,
+        cover: apiBook.cover_image,
+        rating: apiBook.rating_average,
+        reviewCount: apiBook.rating_count,
+        isBestseller: apiBook.is_bestseller === 1,
+        isNewArrival: apiBook.is_new_arrival === 1
+      };
+    }
+  } catch (err) {
+    console.log('Using local book data');
+  }
+
+  if (!book) {
+    document.getElementById('bookDetail').innerHTML =
+      '<div class="text-center" style="padding: 60px;"><h2>Book not found</h2><a href="catalog.html">Back to catalogue</a></div>';
+    return;
+  }
+
+  const cat = getCategoryById(book.categoryId);
+  renderPageTitle(book.title, `<a href="index.html">Home</a> &gt; <a href="catalog.html">Books</a> &gt; ${book.title}`);
+
+  // Fetch reviews from API and merge with local
+  let reviews = getReviewsByBook(book.id);
+  try {
+    const apiReviews = await API.getReviews(book.id);
+    if (apiReviews && apiReviews.length > 0) {
+      const mapped = apiReviews.map(r => ({
+        id: r.review_id,
+        bookId: r.book_id,
+        author: r.first_name + ' ' + r.last_name,
+        rating: r.rating,
+        comment: r.comment,
+        date: r.created_at
+      }));
+      reviews = ReviewsStore.merge(book.id, mapped);
+    }
+  } catch (err) {
+    // Use local reviews + any stored reviews
+    reviews = [...reviews, ...ReviewsStore.getByBook(book.id)];
+  }
+  
+  currentReviews = reviews;
+
+  renderBookDetail(book, cat, reviews);
+  
+  // Related books (same category)
+  let allBooks = BOOKS;
+  try {
+    const apiBooks = await API.getBooks();
+    if (apiBooks) {
+      allBooks = apiBooks.map(b => ({
+        id: b.book_id,
+        title: b.title,
+        author: b.author,
+        price: b.price,
+        stock: b.stock_quantity,
+        categoryId: b.category_id,
+        cover: b.cover_image,
+        rating: b.rating_average,
+        reviewCount: b.rating_count,
+        isBestseller: b.is_bestseller === 1,
+        isNewArrival: b.is_new_arrival === 1
+      }));
+    }
+  } catch (err) {}
+
+  const related = allBooks.filter(b => b.categoryId === book.categoryId && b.id !== book.id).slice(0, 4);
+  document.getElementById('relatedBooks').innerHTML = related.map(renderBookCard).join('');
+});
+
+function renderBookDetail(book, cat, reviews) {
+  document.getElementById('bookDetail').innerHTML = `
+    <div class="book-detail-image">
+      <img src="${book.cover}" alt="${book.title}">
+    </div>
+    <div class="book-detail-info">
+      ${book.isBestseller ? '<span class="badge badge-bestseller" style="position:static;display:inline-block;margin-bottom:12px;">Bestseller</span>' : ''}
+      ${book.isNewArrival ? '<span class="badge badge-new" style="position:static;display:inline-block;margin-bottom:12px;margin-left:8px;">New Arrival</span>' : ''}
+      <h1>${book.title}</h1>
+      <p class="author">by ${book.author}</p>
+      <div class="book-rating" style="font-size: 1.1rem;">
+        <span class="stars">${renderStars(book.rating)}</span>
+        <span class="rating-count">${book.rating} (${book.reviewCount + reviews.length} reviews)</span>
+      </div>
+      <div class="book-detail-meta">
+        <div class="meta-item">
+          <span class="meta-label">Format</span>
+          <span class="meta-value">${book.format}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Publisher</span>
+          <span class="meta-value">${book.publisher}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Year</span>
+          <span class="meta-value">${book.year}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Pages</span>
+          <span class="meta-value">${book.pages}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">ISBN</span>
+          <span class="meta-value">${book.isbn}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Category</span>
+          <span class="meta-value">${cat ? cat.name : 'General'}</span>
+        </div>
+      </div>
+      <p style="color: var(--dark-gray); margin-bottom: 24px; line-height: 1.7;">${book.description}</p>
+      <p class="book-price" style="font-size: 1.8rem; margin-bottom: 20px;">${formatPrice(book.price)}</p>
+      <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px;">
+        <span style="font-weight: 600; color: var(--dark-gray);">Quantity:</span>
+        <div class="quantity-selector">
+          <button onclick="updateQty(-1)">-</button>
+          <input type="number" id="qtyInput" value="1" min="1" max="${book.stock}" readonly>
+          <button onclick="updateQty(1)">+</button>
+        </div>
+        <span style="color: var(--success); font-size: 0.9rem;">${book.stock} in stock</span>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <button class="btn btn-primary" style="padding: 14px 40px; font-size: 1.1rem;" onclick="addToCartDetail(${book.id})">
+          Add to Cart
+        </button>
+        <button class="btn btn-outline" onclick="showToast('Added to wishlist!', 'success')">
+          Add to Wishlist
+        </button>
+      </div>
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab-buttons">
+          <button class="tab-btn active" onclick="switchTab('tab-desc', this)">Description</button>
+          <button class="tab-btn" onclick="switchTab('tab-reviews', this)">Reviews (${reviews.length})</button>
+          <button class="tab-btn" onclick="switchTab('tab-shipping', this)">Delivery Info</button>
+        </div>
+        <div class="tab-panel active" id="tab-desc">
+          <p style="line-height: 1.8; color: var(--dark-gray);">${book.description}</p>
+          <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <div><strong>Publisher:</strong> ${book.publisher}</div>
+            <div><strong>Published:</strong> ${book.year}</div>
+            <div><strong>Pages:</strong> ${book.pages}</div>
+            <div><strong>Format:</strong> ${book.format}</div>
+            <div><strong>ISBN:</strong> ${book.isbn}</div>
+            <div><strong>Language:</strong> English</div>
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-reviews">
+          <!-- Write a Review Form -->
+          <div class="review-form">
+            <div class="review-success" id="reviewSuccess">
+              <i class="fa-solid fa-check-circle"></i>
+              <span>Your review has been submitted successfully!</span>
+            </div>
+            <h3>Write a Review</h3>
+            <div class="star-rating-input" id="starRatingInput">
+              <span class="star" data-rating="1" onclick="setRating(1)">★</span>
+              <span class="star" data-rating="2" onclick="setRating(2)">★</span>
+              <span class="star" data-rating="3" onclick="setRating(3)">★</span>
+              <span class="star" data-rating="4" onclick="setRating(4)">★</span>
+              <span class="star" data-rating="5" onclick="setRating(5)">★</span>
+            </div>
+            <div class="form-group">
+              <label>Your Name</label>
+              <input type="text" id="reviewerName" class="form-control" placeholder="Enter your name" required>
+            </div>
+            <div class="form-group">
+              <label>Your Review <span class="required">*</span></label>
+              <textarea id="reviewComment" class="form-control" placeholder="Share your thoughts about this book..." required></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="submitReview()">
+              <i class="fa-solid fa-paper-plane"></i> Submit Review
+            </button>
+          </div>
+          
+          <hr class="review-divider">
+          
+          <h3 class="review-section-title">Customer Reviews</h3>
+          
+          <div id="reviewsList">
+            ${renderReviewsList(reviews)}
+          </div>
+        </div>
+        <div class="tab-panel" id="tab-shipping">
+          <p style="line-height: 1.8; color: var(--dark-gray);">
+            <strong>Standard Delivery:</strong> 3-5 business days (R60 or FREE on orders over R450)<br><br>
+            <strong>Express Delivery:</strong> 1-2 business days (R120)<br><br>
+            <strong>Click & Collect:</strong> FREE from any Exclusive Books store<br><br>
+            <strong>Returns:</strong> 30-day return policy for unused books in original condition.
+          </p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewsList(reviews) {
+  if (reviews.length === 0) {
+    return `
+      <div class="no-reviews">
+        <i class="fa-regular fa-comment-dots"></i>
+        <h3>No reviews yet</h3>
+        <p>Be the first to share your thoughts on this book!</p>
+      </div>
+    `;
+  }
+  
+  return reviews.map(r => `
+    <div class="review-card">
+      <div class="review-header">
+        <div>
+          <span class="review-author">${r.author}</span>
+          <div class="review-meta">
+            <span class="stars" style="color: var(--gold);">${renderStars(r.rating)}</span>
+            <span class="review-badge">${r.rating}/5</span>
+          </div>
+        </div>
+        <span class="review-date">${formatDate(r.date)}</span>
+      </div>
+      <p class="review-comment">${r.comment}</p>
+    </div>
+  `).join('');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'Recently';
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('en-ZA', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+}
+
+let selectedRating = 0;
+
+function setRating(rating) {
+  selectedRating = rating;
+  const stars = document.querySelectorAll('#starRatingInput .star');
+  stars.forEach((star, index) => {
+    if (index < rating) {
+      star.classList.add('active');
+    } else {
+      star.classList.remove('active');
+    }
+  });
+}
+
+async function submitReview() {
+  const name = document.getElementById('reviewerName').value.trim();
+  const comment = document.getElementById('reviewComment').value.trim();
+  
+  if (selectedRating === 0) {
+    showToast('Please select a star rating', 'error');
+    return;
+  }
+  
+  if (!name) {
+    showToast('Please enter your name', 'error');
+    return;
+  }
+  
+  if (!comment) {
+    showToast('Please write a review comment', 'error');
+    return;
+  }
+  
+  const review = {
+    bookId: currentBookId,
+    author: name,
+    rating: selectedRating,
+    comment: comment,
+    date: new Date().toISOString()
+  };
+  
+  // Try to save to API first
+  try {
+    const result = await apiFetch('/reviews', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        book_id: currentBookId,
+        user_id: 1, // Guest user ID
+        rating: selectedRating,
+        comment: comment
+      })
+    });
+    
+    if (result && result.review_id) {
+      showToast('Review posted to database!', 'success');
+    }
+  } catch (err) {
+    // Save to localStorage as fallback
+    ReviewsStore.add(review);
+    showToast('Review saved locally!', 'success');
+  }
+  
+  // Add to current reviews and re-render
+  currentReviews.unshift({
+    id: Date.now(),
+    bookId: currentBookId,
+    author: name,
+    rating: selectedRating,
+    comment: comment,
+    date: new Date().toISOString()
+  });
+  
+  // Show success message
+  const successMsg = document.getElementById('reviewSuccess');
+  if (successMsg) successMsg.classList.add('show');
+  
+  // Update reviews list
+  document.getElementById('reviewsList').innerHTML = renderReviewsList(currentReviews);
+  
+  // Update review count in tab
+  const tabBtn = document.querySelector('.tab-btn:nth-child(2)');
+  if (tabBtn) tabBtn.textContent = `Reviews (${currentReviews.length})`;
+  
+  // Reset form
+  document.getElementById('reviewerName').value = '';
+  document.getElementById('reviewComment').value = '';
+  setRating(0);
+  
+  // Hide success message after 3 seconds
+  setTimeout(() => {
+    if (successMsg) successMsg.classList.remove('show');
+  }, 3000);
+}
+
+function updateQty(delta) {
+  const input = document.getElementById('qtyInput');
+  let val = parseInt(input.value) + delta;
+  const max = parseInt(input.max);
+  if (val < 1) val = 1;
+  if (val > max) val = max;
+  input.value = val;
+}
+
+function addToCartDetail(bookId) {
+  const qty = parseInt(document.getElementById('qtyInput').value);
+  for (let i = 0; i < qty; i++) Cart.add(bookId);
+}
+
+function switchTab(tabId, btn) {
+  const buttons = btn.parentElement.querySelectorAll('.tab-btn');
+  buttons.forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  const panels = btn.closest('.tabs').querySelectorAll('.tab-panel');
+  panels.forEach(p => p.classList.remove('active'));
+  
+  document.getElementById(tabId).classList.add('active');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checkout | Book Store Online</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header"></header>
+<div class="page-title">
+<div class="container">
+<h1>Checkout</h1>
+<div class="breadcrumb"><a href="index.html">Home</a> &gt; <a href="cart.html">Cart</a> &gt; Checkout</div>
+</div>
+</div>
+<div class="container">
+<div class="checkout-grid">
+<div class="checkout-form">
+<h2>Shipping Details</h2>
+<form id="checkoutForm" onsubmit="event.preventDefault(); placeOrder();">
+<div class="form-row">
+<div class="form-group">
+<label>First Name <span class="required">*</span></label>
+<input type="text" class="form-control" name="firstName" required>
+<span class="form-error">Please enter your first name</span>
+</div>
+<div class="form-group">
+<label>Last Name <span class="required">*</span></label>
+<input type="text" class="form-control" name="lastName" required>
+<span class="form-error">Please enter your last name</span>
+</div>
+</div>
+<div class="form-group">
+<label>Email <span class="required">*</span></label>
+<input type="email" class="form-control" name="email" required>
+<span class="form-error">Please enter a valid email</span>
+</div>
+<div class="form-group">
+<label>Phone <span class="required">*</span></label>
+<input type="tel" class="form-control" name="phone" required>
+<span class="form-error">Please enter your phone number</span>
+</div>
+<div class="form-group">
+<label>Address <span class="required">*</span></label>
+<input type="text" class="form-control" name="address" placeholder="Street address" required>
+<span class="form-error">Please enter your address</span>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>City <span class="required">*</span></label>
+<input type="text" class="form-control" name="city" required>
+</div>
+<div class="form-group">
+<label>Postal Code <span class="required">*</span></label>
+<input type="text" class="form-control" name="postal" required>
+</div>
+</div>
+<div class="form-group">
+<label>Province <span class="required">*</span></label>
+<select class="form-control" name="province" required>
+<option value="">Select Province</option>
+<option>Gauteng</option>
+<option>Western Cape</option>
+<option>KwaZulu-Natal</option>
+<option>Eastern Cape</option>
+<option>Free State</option>
+<option>Mpumalanga</option>
+<option>Limpopo</option>
+<option>North West</option>
+<option>Northern Cape</option>
+</select>
+</div>
+<h2 style="margin-top: 32px; margin-bottom: 20px;">Payment Method</h2>
+<div style="background: var(--off-white); padding: 20px; border-radius: var(--radius); margin-bottom: 20px;">
+<label style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer;">
+<input type="radio" name="payment" value="card" checked style="width: 20px; height: 20px;">
+<span>Credit / Debit Card</span>
+</label>
+<label style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; cursor: pointer;">
+<input type="radio" name="payment" value="eft" style="width: 20px; height: 20px;">
+<span>Instant EFT</span>
+</label>
+<label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+<input type="radio" name="payment" value="cod" style="width: 20px; height: 20px;">
+<span>Cash on Delivery</span>
+</label>
+</div>
+<button type="submit" class="btn btn-primary" style="width: 100%; padding: 16px; font-size: 1.1rem;">Place Order</button>
+</form>
+</div>
+<div class="cart-summary">
+<h3>Your Order</h3>
+<div id="orderSummary"></div>
+</div>
+</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const cart = Cart.get();
+  if (cart.length === 0) {
+    window.location.href = 'cart.html';
+    return;
+  }
+  const subtotal = Cart.getTotal();
+  const shipping = subtotal > 450 ? 0 : 60;
+  const total = subtotal + shipping;
+  document.getElementById('orderSummary').innerHTML = `
+    ${cart.map(item => `
+      <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--light-gray);">
+        <span>${item.title} x${item.quantity}</span>
+        <span style="font-weight: 600;">${formatPrice(item.price * item.quantity)}</span>
+      </div>
+    `).join('')}
+    <div class="summary-row" style="margin-top: 12px;">
+      <span>Subtotal</span><span>${formatPrice(subtotal)}</span>
+    </div>
+    <div class="summary-row">
+      <span>Shipping</span><span style="color: ${shipping === 0 ? 'var(--success)' : ''}">${shipping === 0 ? 'FREE' : formatPrice(shipping)}</span>
+    </div>
+    <div class="summary-row total">
+      <span>TOTAL</span><span>${formatPrice(total)}</span>
+    </div>
+  `;
+});
+
+async function placeOrder() {
+  const form = document.getElementById('checkoutForm');
+  if (!validateForm(form)) {
+    showToast('Please fill in all required fields', 'error');
+    return;
+  }
+
+  const cart = Cart.get();
+  const subtotal = Cart.getTotal();
+  const shipping = subtotal > 450 ? 0 : 60;
+  const total = subtotal + shipping;
+  const payment = form.querySelector('input[name="payment"]:checked').value;
+  const address = form.querySelector('input[name="address"]').value + ', ' + 
+                  form.querySelector('input[name="city"]').value;
+
+  // Send order to API
+  try {
+    const result = await API.placeOrder({
+      user_id: 1,
+      total_amount: subtotal,
+      shipping_amount: shipping,
+      payment_method: payment,
+      shipping_address: address
+    });
+    showToast('Order placed successfully! Order #: ' + result.order_number, 'success');
+  } catch (err) {
+    showToast('Order placed (local only)', 'success');
+  }
+
+  Cart.clear();
+  setTimeout(() => {
+    window.location.href = 'index.html';
+  }, 2000);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account | Book Store Online</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header"></header>
+<div class="page-title" style="padding: 30px 0;">
+<div class="container">
+<h1 style="font-size: 1.5rem;">My Account</h1>
+</div>
+</div>
+<div class="container" style="max-width: 480px; padding-bottom: 60px;">
+<div class="auth-container">
+<div id="loginForm">
+<h1>Welcome Back</h1>
+<p class="auth-subtitle">Sign in to your account</p>
+<form onsubmit="event.preventDefault(); handleLogin();">
+<div class="form-group">
+<label>Email Address</label>
+<input type="email" id="loginEmail" class="form-control" placeholder="your@email.com" value="admin@bookstore.co.za" required>
+</div>
+<div class="form-group">
+<label>Password</label>
+<input type="password" id="loginPassword" class="form-control" placeholder="Password" value="admin123" required>
+</div>
+<button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Sign In</button>
+</form>
+<div class="auth-toggle">
+Don't have an account? <a href="#" onclick="showRegister()">Create one</a>
+</div>
+<hr style="margin: 24px 0; border: none; border-top: 1px solid var(--light-gray);">
+<p style="text-align: center; font-size: 0.85rem; color: var(--mid-gray);">
+<strong>Demo Login:</strong><br>
+Admin: admin@bookstore.co.za / admin123<br>
+User: user@bookstore.co.za / user123
+</p>
+</div>
+<div id="registerForm" style="display: none;">
+<h1>Create Account</h1>
+<p class="auth-subtitle">Join Book Store today</p>
+<form onsubmit="event.preventDefault(); handleRegister();">
+<div class="form-row">
+<div class="form-group">
+<label>First Name <span class="required">*</span></label>
+<input type="text" id="regFirstName" class="form-control" placeholder="John" required>
+</div>
+<div class="form-group">
+<label>Last Name <span class="required">*</span></label>
+<input type="text" id="regLastName" class="form-control" placeholder="Doe" required>
+</div>
+</div>
+<div class="form-group">
+<label>Email Address <span class="required">*</span></label>
+<input type="email" id="regEmail" class="form-control" placeholder="your@email.com" required>
+</div>
+<div class="form-group">
+<label>Phone Number</label>
+<input type="tel" id="regPhone" class="form-control" placeholder="082 123 4567">
+</div>
+<div class="form-group">
+<label>Password <span class="required">*</span></label>
+<input type="password" id="regPassword" class="form-control" placeholder="Min 6 characters" required minlength="6">
+</div>
+<div class="form-group">
+<label>Confirm Password <span class="required">*</span></label>
+<input type="password" id="regConfirm" class="form-control" placeholder="Confirm password" required>
+</div>
+<button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Create Account</button>
+</form>
+<div class="auth-toggle">
+Already have an account? <a href="#" onclick="showLogin()">Sign in</a>
+</div>
+</div>
+</div>
+</div>
+<footer class="site-footer"></footer>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+function showRegister() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+}
+function showLogin() {
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+}
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) {
+    showToast('Please fill in all fields', 'error');
+    return;
+  }
+  const isAdmin = email === 'admin@bookstore.co.za' && password === 'admin123';
+  Auth.login(email, password, isAdmin);
+  showToast('Welcome back, ' + (isAdmin ? 'Admin' : 'User') + '!', 'success');
+  setTimeout(() => {
+    window.location.href = isAdmin ? 'admin.html' : 'index.html';
+  }, 1000);
+}
+
+async function handleRegister() {
+  const firstName = document.getElementById('regFirstName').value;
+  const lastName = document.getElementById('regLastName').value;
+  const email = document.getElementById('regEmail').value;
+  const phone = document.getElementById('regPhone').value;
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+  
+  if (password !== confirm) {
+    showToast('Passwords do not match', 'error');
+    return;
+  }
+
+  // Save to DATABASE first
+  try {
+    const result = await apiFetch('/users/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        phone: phone,
+        password: password
+      })
+    });
+    
+    if (result && result.user_id) {
+      showToast('Account created and saved to database!', 'success');
+      // Also save to localStorage for session
+      Auth.register(firstName, lastName, email, password);
+      setTimeout(() => window.location.href = 'index.html', 1500);
+    } else {
+      throw new Error('Registration failed');
+    }
+  } catch (err) {
+    // If API fails, show error - don't silently fall back
+    if (err.message && err.message.includes('already exists')) {
+      showToast('Email already registered!', 'error');
+    } else {
+      showToast('Registration failed. Please try again.', 'error');
+      console.log('Registration error:', err);
+    }
+  }
+}
+</script>
+</body>
+</html>

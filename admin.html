@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel | Book Store Online</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header"></header>
+<div class="admin-layout">
+<!-- Sidebar -->
+<aside class="admin-sidebar">
+<h2>Admin Panel</h2>
+<nav class="admin-nav">
+<a href="#" class="active" onclick="showSection('dashboard')">Dashboard</a>
+<a href="#" onclick="showSection('books')">Manage Books</a>
+<a href="#" onclick="showSection('orders')">Orders</a>
+<a href="#" onclick="showSection('users')">Users</a>
+<a href="#" onclick="showSection('reviews')">Reviews</a>
+<a href="#" onclick="showSection('contacts')">Contact Messages</a>
+<a href="index.html">View Store</a>
+</nav>
+</aside>
+<!-- Main Content -->
+<main class="admin-main">
+<!-- Dashboard Section -->
+<section id="dashboard-section">
+<h1 style="margin-bottom: 24px; color: var(--primary);">Dashboard Overview</h1>
+<div class="stats-grid">
+<div class="stat-card">
+<h3>Total Books</h3>
+<div class="stat-value" id="statBooks">0</div>
+</div>
+<div class="stat-card">
+<h3>Total Orders</h3>
+<div class="stat-value" id="statOrders">0</div>
+</div>
+<div class="stat-card">
+<h3>Total Users</h3>
+<div class="stat-value" id="statUsers">0</div>
+</div>
+<div class="stat-card">
+<h3>Total Reviews</h3>
+<div class="stat-value" id="statReviews">0</div>
+</div>
+</div>
+<div style="background: var(--white); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow);">
+<h2 style="margin-bottom: 20px; color: var(--primary);">Recent Bestsellers</h2>
+<div class="book-grid" id="adminBestsellers" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));"></div>
+</div>
+</section>
+<!-- Books Management Section -->
+<section id="books-section" style="display: none;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+<h1 style="color: var(--primary);">Manage Books</h1>
+<button class="btn btn-primary" onclick="openBookModal()">+ Add New Book</button>
+</div>
+<div class="data-table" style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse;">
+<thead>
+<tr>
+<th>ID</th>
+<th>Cover</th>
+<th>Title</th>
+<th>Author</th>
+<th>ISBN</th>
+<th>Category</th>
+<th>Price</th>
+<th>Stock</th>
+<th>Reviews</th>
+<th>Actions</th>
+</tr>
+</thead>
+<tbody id="booksTable"></tbody>
+</table>
+</div>
+</section>
+<!-- Orders Section -->
+<section id="orders-section" style="display: none;">
+<h1 style="margin-bottom: 24px; color: var(--primary);">Orders</h1>
+<div class="data-table" style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse;">
+<thead>
+<tr>
+<th>Order #</th>
+<th>Customer</th>
+<th>Items</th>
+<th>Total</th>
+<th>Status</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="ordersTable"></tbody>
+</table>
+</div>
+</section>
+<!-- Users Section -->
+<section id="users-section" style="display: none;">
+<h1 style="margin-bottom: 24px; color: var(--primary);">Registered Users</h1>
+<div class="data-table" style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse;">
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Phone</th>
+<th>Role</th>
+<th>Joined</th>
+</tr>
+</thead>
+<tbody id="usersTable"></tbody>
+</table>
+</div>
+</section>
+<!-- Reviews Section -->
+<section id="reviews-section" style="display: none;">
+<h1 style="margin-bottom: 24px; color: var(--primary);">All Reviews</h1>
+<div class="data-table" style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse;">
+<thead>
+<tr>
+<th>ID</th>
+<th>Book</th>
+<th>Customer</th>
+<th>Rating</th>
+<th>Comment</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="reviewsTable"></tbody>
+</table>
+</div>
+</section>
+<!-- Contact Messages Section -->
+<section id="contacts-section" style="display: none;">
+<h1 style="margin-bottom: 24px; color: var(--primary);">Contact Messages</h1>
+<div class="data-table" style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse;">
+<thead>
+<tr>
+<th>ID</th>
+<th>Name</th>
+<th>Email</th>
+<th>Phone</th>
+<th>Subject</th>
+<th>Message</th>
+<th>Status</th>
+<th>Date</th>
+</tr>
+</thead>
+<tbody id="contactsTable"></tbody>
+</table>
+</div>
+</section>
+</main>
+</div>
+<!-- Add/Edit Book Modal -->
+<div class="modal-overlay" id="bookModal">
+<div class="modal">
+<div class="modal-header">
+<h2 id="modalTitle">Add New Book</h2>
+<button class="modal-close" onclick="closeBookModal()">&times;</button>
+</div>
+<form id="bookForm" onsubmit="event.preventDefault(); saveBook();">
+<input type="hidden" id="editBookId">
+<div class="form-row">
+<div class="form-group">
+<label>Title <span class="required">*</span></label>
+<input type="text" id="bookTitle" class="form-control" required>
+</div>
+<div class="form-group">
+<label>Author <span class="required">*</span></label>
+<input type="text" id="bookAuthor" class="form-control" required>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>ISBN</label>
+<input type="text" id="bookIsbn" class="form-control" placeholder="9780000000000">
+</div>
+<div class="form-group">
+<label>Price (R) <span class="required">*</span></label>
+<input type="number" id="bookPrice" class="form-control" step="0.01" min="0" required>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Stock <span class="required">*</span></label>
+<input type="number" id="bookStock" class="form-control" min="0" required>
+</div>
+<div class="form-group">
+<label>Year</label>
+<input type="number" id="bookYear" class="form-control" value="2026">
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Pages</label>
+<input type="number" id="bookPages" class="form-control" value="0">
+</div>
+<div class="form-group">
+<label>Category <span class="required">*</span></label>
+<select id="bookCategory" class="form-control" required>
+${CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join('')}
+</select>
+</div>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Format</label>
+<select id="bookFormat" class="form-control">
+<option>Paperback</option>
+<option>Hardcover</option>
+<option>Board Book</option>
+<option>E-book</option>
+</select>
+</div>
+<div class="form-group">
+<label>Cover Image Path</label>
+<input type="text" id="bookCover" class="form-control" placeholder="images/BookName.jpg" value="images/ThreeSummers.jpg">
+</div>
+</div>
+<div class="form-group">
+<label>Publisher</label>
+<input type="text" id="bookPublisher" class="form-control">
+</div>
+<div class="form-group">
+<label>Description</label>
+<textarea id="bookDesc" class="form-control" rows="3"></textarea>
+</div>
+<div style="display: flex; gap: 12px; margin-top: 8px;">
+<label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+<input type="checkbox" id="bookBestseller"> Bestseller
+</label>
+<label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+<input type="checkbox" id="bookNew"> New Arrival
+</label>
+</div>
+<button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 20px; padding: 14px;">Save Book</button>
+</form>
+</div>
+</div>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+<script>
+// Redirect non-admin users
+if (!Auth.isAdmin()) {
+  const user = Auth.getUser();
+  if (!user) {
+    window.location.href = 'login.html';
+  }
+}
+
+// Load admin data from API
+document.addEventListener('DOMContentLoaded', async () => {
+  // Hide admin nav link in header
+  document.querySelectorAll('.admin-nav-link').forEach(el => el.style.display = 'none');
+
+  // Load stats from API
+  let stats = { totalBooks: BOOKS.length, totalOrders: 0, totalUsers: 0, totalReviews: REVIEWS.length };
+  try {
+    const apiStats = await API.getStats();
+    if (apiStats) stats = apiStats;
+  } catch (err) {
+    console.log('Using local stats');
+  }
+
+  document.getElementById('statBooks').textContent = stats.totalBooks;
+  document.getElementById('statOrders').textContent = stats.totalOrders;
+  document.getElementById('statUsers').textContent = stats.totalUsers;
+  document.getElementById('statReviews').textContent = stats.totalReviews;
+
+  // Load books from API
+  let books = BOOKS;
+  try {
+    const apiBooks = await API.getBooks();
+    if (apiBooks && apiBooks.length > 0) {
+      books = apiBooks.map(b => ({
+        id: b.book_id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn,
+        price: b.price,
+        stock: b.stock_quantity,
+        categoryId: b.category_id,
+        format: b.format,
+        cover: b.cover_image,
+        publisher: b.publisher,
+        year: b.publication_year,
+        pages: b.page_count,
+        description: b.description,
+        rating: b.rating_average,
+        reviewCount: b.rating_count,
+        isBestseller: b.is_bestseller === 1,
+        isNewArrival: b.is_new_arrival === 1
+      }));
+    }
+  } catch (err) {
+    console.log('Using local books for admin');
+  }
+
+  // Bestsellers
+  const bestsellers = books.filter(b => b.isBestseller).slice(0, 6);
+  document.getElementById('adminBestsellers').innerHTML =
+    bestsellers.map(renderBookCard).join('');
+
+  renderBooksTable(books);
+  renderOrdersTable();
+  renderUsersTable();
+  renderReviewsTable();
+  renderContactsTable();
+});
+
+function showSection(section) {
+  ['dashboard', 'books', 'orders', 'users', 'reviews', 'contacts'].forEach(s => {
+    document.getElementById(s + '-section').style.display = 'none';
+  });
+  document.getElementById(section + '-section').style.display = 'block';
+  document.querySelectorAll('.admin-nav a').forEach(a => a.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function renderBooksTable(books) {
+  document.getElementById('booksTable').innerHTML = books.map(book => {
+    const cat = getCategoryById(book.categoryId);
+    return `
+      <tr>
+        <td>${book.id}</td>
+        <td><img src="${book.cover}" alt="" style="width: 40px; height: 55px; object-fit: cover; border-radius: 4px;"></td>
+        <td style="font-weight: 600;">${book.title}</td>
+        <td>${book.author}</td>
+        <td>${book.isbn || '-'}</td>
+        <td>${cat ? cat.name : 'N/A'}</td>
+        <td style="font-weight: 600;">${formatPrice(book.price)}</td>
+        <td>${book.stock}</td>
+        <td>${book.reviewCount || 0}</td>
+        <td>
+          <div class="table-actions">
+            <button class="btn-edit" onclick="editBook(${book.id})">Edit</button>
+            <button class="btn-delete" onclick="deleteBook(${book.id})">Delete</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function renderOrdersTable() {
+  let orders = [];
+  try {
+    const apiOrders = await API.getOrders();
+    if (apiOrders) orders = apiOrders;
+  } catch (err) {
+    const statuses = ['Delivered', 'Processing', 'Shipped', 'Pending'];
+    const statusColors = { Delivered: 'var(--success)', Processing: 'var(--accent)', Shipped: 'var(--teal)', Pending: 'var(--gold)' };
+    const names = ['Thabiso Netshidaulu', 'Sarah Maita', 'John Smith', 'Lisa Johnson', 'David Brown', 'Emma Wilson', 'Michael Lee'];
+    
+    orders = Array.from({ length: 8 }, (_, i) => {
+      const status = statuses[i % 4];
+      const total = (Math.floor(Math.random() * 15) + 1) * 100 + Math.floor(Math.random() * 99);
+      return {
+        order_number: '#ORD-' + (1001 + i),
+        first_name: names[i % names.length].split(' ')[0],
+        last_name: names[i % names.length].split(' ')[1],
+        total_amount: total,
+        status: status,
+        created_at: '2026-0' + (Math.floor(Math.random() * 3) + 1) + '-' + (Math.floor(Math.random() * 28) + 1)
+      };
+    });
+  }
+
+  document.getElementById('ordersTable').innerHTML = orders.map(o => {
+    const statusColor = {
+      'Delivered': 'var(--success)',
+      'Processing': 'var(--accent)',
+      'Shipped': 'var(--teal)',
+      'Pending': 'var(--gold)'
+    }[o.status] || 'var(--mid-gray)';
+
+    return `
+      <tr>
+        <td style="font-weight: 600;">${o.order_number}</td>
+        <td>${o.first_name} ${o.last_name}</td>
+        <td>${Math.floor(Math.random() * 5) + 1} items</td>
+        <td style="font-weight: 600;">R ${parseFloat(o.total_amount).toFixed(2)}</td>
+        <td><span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">${o.status}</span></td>
+        <td>${o.created_at}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function renderUsersTable() {
+  let users = [];
+  try {
+    const apiUsers = await API.getUsers();
+    if (apiUsers) users = apiUsers;
+  } catch (err) {
+    users = [
+      { user_id: 1, first_name: 'Thabiso', last_name: 'Netshidaulu', email: 'EDUV4817579@eduvos.com', phone: '0873654677', is_admin: 1, created_at: '2026-01-15' },
+      { user_id: 2, first_name: 'Sarah', last_name: 'Maita', email: 'sarah.m@email.com', phone: '', is_admin: 0, created_at: '2026-02-20' },
+      { user_id: 3, first_name: 'John', last_name: 'Smith', email: 'john.smith@email.com', phone: '', is_admin: 0, created_at: '2026-03-01' }
+    ];
+  }
+
+  document.getElementById('usersTable').innerHTML = users.map(u => `
+    <tr>
+      <td>${u.user_id}</td>
+      <td style="font-weight: 600;">${u.first_name} ${u.last_name}</td>
+      <td>${u.email}</td>
+      <td>${u.phone || '-'}</td>
+      <td><span style="background: ${u.is_admin ? 'var(--accent)' : 'var(--teal)'}20; color: ${u.is_admin ? 'var(--accent)' : 'var(--teal)'}; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">${u.is_admin ? 'Admin' : 'Customer'}</span></td>
+      <td>${u.created_at}</td>
+    </tr>
+  `).join('');
+}
+
+async function renderReviewsTable() {
+  let reviews = [];
+  try {
+    const apiReviews = await apiFetch('/admin/reviews');
+    if (apiReviews) reviews = apiReviews;
+  } catch (err) {
+    reviews = REVIEWS.map(r => {
+      const book = getBookById(r.bookId);
+      return {
+        review_id: r.id,
+        book_title: book ? book.title : 'Unknown',
+        first_name: r.author.split(' ')[0],
+        last_name: r.author.split(' ')[1] || '',
+        rating: r.rating,
+        comment: r.comment,
+        created_at: r.date
+      };
+    });
+  }
+
+  document.getElementById('reviewsTable').innerHTML = reviews.length === 0 ?
+    '<tr><td colspan="6" style="text-align: center; padding: 40px;">No reviews yet</td></tr>' :
+    reviews.map(r => `
+      <tr>
+        <td>${r.review_id}</td>
+        <td style="font-weight: 600;">${r.book_title}</td>
+        <td>${r.first_name} ${r.last_name}</td>
+        <td><span style="color: var(--gold);">${renderStars(r.rating)}</span> (${r.rating})</td>
+        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${r.comment}</td>
+        <td>${r.created_at}</td>
+      </tr>
+    `).join('');
+}
+
+async function renderContactsTable() {
+  let messages = [];
+  try {
+    const apiMessages = await apiFetch('/admin/contacts');
+    if (apiMessages) messages = apiMessages;
+  } catch (err) {
+    messages = [];
+  }
+
+  document.getElementById('contactsTable').innerHTML = messages.length === 0 ?
+    '<tr><td colspan="8" style="text-align: center; padding: 40px;">No messages yet</td></tr>' :
+    messages.map(m => `
+      <tr>
+        <td>${m.message_id}</td>
+        <td style="font-weight: 600;">${m.first_name} ${m.last_name}</td>
+        <td>${m.email}</td>
+        <td>${m.phone || '-'}</td>
+        <td>${m.subject || 'General'}</td>
+        <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;">${m.message}</td>
+        <td><span style="background: ${m.status === 'Unread' ? 'var(--danger)' : 'var(--success)'}20; color: ${m.status === 'Unread' ? 'var(--danger)' : 'var(--success)'}; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">${m.status}</span></td>
+        <td>${m.created_at}</td>
+      </tr>
+    `).join('');
+}
+
+function openBookModal() {
+  document.getElementById('modalTitle').textContent = 'Add New Book';
+  document.getElementById('editBookId').value = '';
+  document.getElementById('bookForm').reset();
+  document.getElementById('bookModal').classList.add('active');
+}
+
+function closeBookModal() {
+  document.getElementById('bookModal').classList.remove('active');
+}
+
+function editBook(id) {
+  const book = getBookById(id);
+  if (!book) return;
+  document.getElementById('modalTitle').textContent = 'Edit Book';
+  document.getElementById('editBookId').value = book.id;
+  document.getElementById('bookTitle').value = book.title;
+  document.getElementById('bookAuthor').value = book.author;
+  document.getElementById('bookIsbn').value = book.isbn || '';
+  document.getElementById('bookPrice').value = book.price;
+  document.getElementById('bookStock').value = book.stock;
+  document.getElementById('bookYear').value = book.year || 2026;
+  document.getElementById('bookPages').value = book.pages || 0;
+  document.getElementById('bookCategory').value = book.categoryId;
+  document.getElementById('bookFormat').value = book.format;
+  document.getElementById('bookCover').value = book.cover || 'images/ThreeSummers.jpg';
+  document.getElementById('bookPublisher').value = book.publisher || '';
+  document.getElementById('bookDesc').value = book.description || '';
+  document.getElementById('bookBestseller').checked = book.isBestseller;
+  document.getElementById('bookNew').checked = book.isNewArrival;
+  document.getElementById('bookModal').classList.add('active');
+}
+
+async function saveBook() {
+  const id = document.getElementById('editBookId').value;
+  const title = document.getElementById('bookTitle').value;
+  const author = document.getElementById('bookAuthor').value;
+  const isbn = document.getElementById('bookIsbn').value;
+  const price = parseFloat(document.getElementById('bookPrice').value);
+  const stock = parseInt(document.getElementById('bookStock').value);
+  const year = parseInt(document.getElementById('bookYear').value);
+  const pages = parseInt(document.getElementById('bookPages').value);
+  const categoryId = parseInt(document.getElementById('bookCategory').value);
+  const format = document.getElementById('bookFormat').value;
+  const cover = document.getElementById('bookCover').value;
+  const publisher = document.getElementById('bookPublisher').value;
+  const description = document.getElementById('bookDesc').value;
+  const isBestseller = document.getElementById('bookBestseller').checked;
+  const isNewArrival = document.getElementById('bookNew').checked;
+
+  const bookData = {
+    title, author, isbn, price, stock_quantity: stock,
+    publication_year: year, page_count: pages,
+    category_id: categoryId, format, cover_image: cover,
+    publisher, description,
+    is_bestseller: isBestseller,
+    is_new_arrival: isNewArrival
+  };
+
+  if (id) {
+    // Update existing
+    try {
+      await API.updateBook(id, bookData);
+      showToast('Book updated successfully!', 'success');
+    } catch (err) {
+      showToast('Failed to update book', 'error');
+      return;
+    }
+  } else {
+    // Add new - SEND ALL DATA TO DATABASE
+    try {
+      const result = await API.addBook(bookData);
+      showToast('Book added to database! ID: ' + result.id, 'success');
+    } catch (err) {
+      showToast('Failed to add book', 'error');
+      return;
+    }
+  }
+
+  closeBookModal();
+  refreshBooksTable();
+}
+
+async function deleteBook(id) {
+  if (confirm('Are you sure you want to permanently delete this book?')) {
+    try {
+      await API.deleteBook(id);
+      showToast('Book deleted!', 'success');
+    } catch (err) {
+      showToast('Failed to delete book', 'error');
+      return;
+    }
+    
+    refreshBooksTable();
+  }
+}
+
+async function refreshBooksTable() {
+  let books = BOOKS;
+  try {
+    const apiBooks = await API.getBooks();
+    if (apiBooks) {
+      books = apiBooks.map(b => ({
+        id: b.book_id,
+        title: b.title,
+        author: b.author,
+        isbn: b.isbn,
+        price: b.price,
+        stock: b.stock_quantity,
+        categoryId: b.category_id,
+        format: b.format,
+        cover: b.cover_image,
+        publisher: b.publisher,
+        year: b.publication_year,
+        pages: b.page_count,
+        description: b.description,
+        rating: b.rating_average,
+        reviewCount: b.rating_count,
+        isBestseller: b.is_bestseller === 1,
+        isNewArrival: b.is_new_arrival === 1
+      }));
+    }
+  } catch (err) {}
+  
+  renderBooksTable(books);
+  document.getElementById('statBooks').textContent = books.length;
+}
+
+document.getElementById('bookModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('bookModal')) closeBookModal();
+});
+</script>
+</body>
+</html>
